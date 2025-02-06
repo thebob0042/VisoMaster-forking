@@ -53,7 +53,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         # '''
             # self.parameters dict have the following structure:
             # {
-                # face_id (int): 
+                # face_id (int):
                 # {
                     # parameter_name: parameter_value,
                     # ------
@@ -61,7 +61,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 # -----
             # }
         # '''
-        self.parameters: ParametersTypes = {} 
+        self.parameters: Dict[int, Dict[str, bool|int|float|str]] = {}
 
         self.default_parameters: Dict[str, bool|int|float|str] = {}
         self.copied_parameters: Dict[str, bool|int|float|str] = {}
@@ -72,7 +72,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.control: ControlTypes = {}
         self.parameter_widgets: ParametersWidgetTypes = {}
         self.loaded_embedding_filename: str = ''
-        
+
         self.is_full_screen = False
         self.dfm_models_data = DFM_MODELS_DATA
         # This flag is used to make sure new loaded media is properly fit into the graphics frame on the first load
@@ -83,6 +83,10 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.model_loading_signal.connect(partial(common_widget_actions.show_model_loading_dialog, self))
         self.model_loaded_signal.connect(partial(common_widget_actions.hide_model_loading_dialog, self))
         self.display_messagebox_signal.connect(partial(common_widget_actions.create_and_show_messagebox, self))
+
+        # Initialize graphics scene here
+        self.scene = QtWidgets.QGraphicsScene()
+        self.graphicsViewFrame.setScene(self.scene)
     def initialize_widgets(self):
         # Initialize QListWidget for target media
         self.targetVideosList.setFlow(QtWidgets.QListWidget.LeftToRight)
@@ -113,8 +117,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.inputFacesList.viewport().installEventFilter(list_widget_event_filter)
 
         # Initialize graphics frame to view frames
-        self.scene = QtWidgets.QGraphicsScene()
-        self.graphicsViewFrame.setScene(self.scene)
+        # self.scene = QtWidgets.QGraphicsScene() # Moved to initialize_variables
+        # self.graphicsViewFrame.setScene(self.scene) # Moved to initialize_variables
         # Event filter to start playing when clicking on frame
         graphics_event_filter = GraphicsViewEventFilter(self, self.graphicsViewFrame,)
         self.graphicsViewFrame.installEventFilter(graphics_event_filter)
@@ -189,7 +193,23 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         common_widget_actions.update_gpu_memory_progressbar(self)
         # Set face_swap_tab as the default focused tab
         self.tabWidget.setCurrentIndex(0)
-        # widget_actions.add_groupbox_and_widgets_from_layout_map(self)
+
+        # Connect the new View Face Compare checkbox
+        self.viewFaceCompareCheckBox.toggled.connect(self.toggle_view_face_compare)
+
+    def toggle_view_face_compare(self, checked):
+        """
+        This function is called when the 'View Face Compare' checkbox is toggled.
+        It directly executes the 'fit_image_to_view_onchange' action
+        for 'View Face Compare' AND synchronizes the toggle in parameters panel.
+        """
+        layout_actions.fit_image_to_view_onchange(self, checked) # Directly call the action
+
+        # Synchronize with the ViewFaceCompareEnableToggle in parameters panel
+        view_face_compare_toggle = self.parameter_widgets.get('ViewFaceCompareEnableToggle')
+        if view_face_compare_toggle:
+            view_face_compare_toggle.setChecked(checked)
+
     def __init__(self):
         super(MainWindow, self).__init__()
         self.setupUi(self)
